@@ -37,6 +37,7 @@
 #include "ParameterAccessContext.h"
 #include "ConfigurationAccessContext.h"
 #include <errno.h>
+#include <convert.hpp>
 
 #define base CParameterType
 
@@ -122,19 +123,12 @@ bool CFixedPointParameterType::toBlackboard(const string& strValue, uint32_t& ui
         return false;
     }
 
-    int64_t iData;
+    uint32_t uiData;
 
     if (parameterAccessContext.valueSpaceIsRaw()) {
-        errno = 0;
-        char *pcStrEnd;
+        bool bConversionSucceeded = convertTo(strValue, uiData);
 
-        // Get data in integer form
-        iData = strtoll(strValue.c_str(), &pcStrEnd, 0);
-
-        // Conversion error when the input string does not contain any digit or the number is out of range
-        bool bConversionSucceeded = !errno && (strValue.c_str() != pcStrEnd);
-
-        if (!bConversionSucceeded || !isEncodable((uint64_t)iData, !bValueProvidedAsHexa)) {
+        if (!bConversionSucceeded || !isEncodable(uiData, !bValueProvidedAsHexa)) {
 
             // Illegal value provided
             parameterAccessContext.setError(getOutOfRangeError(strValue, parameterAccessContext.valueSpaceIsRaw(), bValueProvidedAsHexa));
@@ -144,17 +138,12 @@ bool CFixedPointParameterType::toBlackboard(const string& strValue, uint32_t& ui
         if (bValueProvidedAsHexa) {
 
             // Sign extend
-            signExtend(iData);
+            signExtend((int32_t&)uiData);
         }
 
     } else {
-        errno = 0;
-        char *pcStrEnd;
-
-        double dData = strtod(strValue.c_str(), &pcStrEnd);
-
-        // Conversion error when the input string does not contain any digit or the number is out of range (int32_t type)
-        bool bConversionSucceeded = !errno && (strValue.c_str() != pcStrEnd);
+        double dData;
+        bool bConversionSucceeded = convertTo(strValue, dData);
 
         // Check encodability
         if (!bConversionSucceeded || !checkValueAgainstRange(dData)) {
@@ -166,13 +155,13 @@ bool CFixedPointParameterType::toBlackboard(const string& strValue, uint32_t& ui
         }
 
         // Do the conversion
-        iData = asInteger(dData);
+        uiData = (uint32_t)asInteger(dData);
     }
 
     // check that the data is encodable and can be safely written to the blackboard
-    assert(isEncodable((unsigned long int)iData, true));
+    assert(isEncodable(uiData, true));
 
-    uiValue = (uint32_t)iData;
+    uiValue = uiData;
 
     return true;
 }
