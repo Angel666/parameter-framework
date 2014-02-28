@@ -200,8 +200,7 @@ bool CFixedPointParameterType::fromBlackboard(string& strValue, const uint32_t& 
 
         // Set up the precision of the display and notation type
         int iPrecision = (_uiFractional  * log10(2.0)) + 1;
-        int iFactor = pow(10.0, iPrecision);
-        strStream << fixed << ((int64_t)(dData * iFactor)) / (double)iFactor;
+        strStream << fixed << setprecision(iPrecision) << dData;
     }
 
     strValue = strStream.str();
